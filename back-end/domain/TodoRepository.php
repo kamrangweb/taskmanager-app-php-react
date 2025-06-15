@@ -2,99 +2,135 @@
 class TodoRepository {
     private $conn;
 
-    public function __construct($db) {
-        $this->conn = $db;
+    public function __construct($conn) {
+        $this->conn = $conn;
     }
 
-    // Get Todos by User ID
-    public function getTodos($user_id) {
-        $query = "SELECT t.*, COUNT(l.id) as likes FROM todos t 
-                 LEFT JOIN likes l ON t.id = l.todo_id 
-                 WHERE t.user_id = :user_id 
-                 GROUP BY t.id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":user_id", $user_id);
-        $stmt->execute();
-        return $stmt->fetchAll(PDO::FETCH_ASSOC);
-    }
-
-    // Create a New Todo
-    public function createTodo($user_id, $task) {
-        $query = "INSERT INTO todos (user_id, task) VALUES (:user_id, :task)";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":user_id", $user_id);
-        $stmt->bindParam(":task", $task);
-
-        return $stmt -> execute();
-    }
-
-    // Update Todo
-    public function updateTodo($id, $task, $completed) {
-        $query = "UPDATE todos SET task = :task, completed = :completed WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":task", $task);
-        $stmt->bindParam(":completed", $completed);
-        $stmt->bindParam(":id", $id);
-
-        if ($stmt->execute()) {
-            return ["message" => "Task updated successfully!"];
-        }
-        return ["error" => "Task update failed!"];
-    }
-
-    // Delete Todo
-    public function deleteTodo($id) {
-        $query = "DELETE FROM todos WHERE id = :id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":id", $id);
-
-        if ($stmt->execute()) {
-            return ["message" => "Task deleted successfully!"];
-        }
-        return ["error" => "Task deletion failed!"];
-    }
-
-    // Toggle Like
-    public function toggleLike($todo_id, $user_id) {
+    public function getTodos($userId) {
         try {
-            // Check if like exists
-            $checkQuery = "SELECT id FROM likes WHERE todo_id = :todo_id AND user_id = :user_id";
-            $checkStmt = $this->conn->prepare($checkQuery);
-            $checkStmt->bindParam(":todo_id", $todo_id);
-            $checkStmt->bindParam(":user_id", $user_id);
-            $checkStmt->execute();
+            // Simple query to get all todos first
+            $query = "SELECT * FROM todos";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute();
             
-            if ($checkStmt->rowCount() > 0) {
+            $todos = [];
+            while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $todos[] = $row;
+            }
+            
+            // Debug: Print raw data
+            error_log("Raw todos data: " . json_encode($todos));
+            
+            return $todos;
+        } catch (PDOException $e) {
+            error_log("Database error: " . $e->getMessage());
+            throw new Exception("Error fetching todos: " . $e->getMessage());
+        }
+    }
+
+    public function createTodo($userId, $task) {
+        try {
+            $query = "INSERT INTO todos (user_id, task, completed) VALUES (?, ?, 0)";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$userId, $task]);
+            
+            return [
+                'id' => $this->conn->lastInsertId(),
+                'task' => $task,
+                'completed' => false,
+                'likes' => 0,
+                'hasLiked' => false
+            ];
+        } catch (PDOException $e) {
+            throw new Exception("Error creating todo: " . $e->getMessage());
+        }
+    }
+
+    public function updateTodo($todoId, $userId, $data) {
+        try {
+            $updates = [];
+            $params = [];
+            
+            if (isset($data['task'])) {
+                $updates[] = "task = ?";
+                $params[] = $data['task'];
+            }
+            
+            if (isset($data['completed'])) {
+                $updates[] = "completed = ?";
+                $params[] = $data['completed'] ? 1 : 0;
+            }
+            
+            if (empty($updates)) {
+                return false;
+            }
+            
+            $params[] = $todoId;
+            $params[] = $userId;
+            
+            $query = "UPDATE todos SET " . implode(", ", $updates) . " WHERE id = ? AND user_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute($params);
+            
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            throw new Exception("Error updating todo: " . $e->getMessage());
+        }
+    }
+
+    public function deleteTodo($todoId, $userId) {
+        try {
+            $query = "DELETE FROM todos WHERE id = ? AND user_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$todoId, $userId]);
+            
+            return $stmt->rowCount() > 0;
+        } catch (PDOException $e) {
+            throw new Exception("Error deleting todo: " . $e->getMessage());
+        }
+    }
+
+    public function toggleLike($todoId, $userId) {
+        try {
+            $this->conn->beginTransaction();
+            
+            // Check if already liked
+            $query = "SELECT COUNT(*) FROM todo_likes WHERE todo_id = ? AND user_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$todoId, $userId]);
+            $hasLiked = $stmt->fetchColumn() > 0;
+            
+            if ($hasLiked) {
                 // Unlike
-                $query = "DELETE FROM likes WHERE todo_id = :todo_id AND user_id = :user_id";
+                $query = "DELETE FROM todo_likes WHERE todo_id = ? AND user_id = ?";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":todo_id", $todo_id);
-                $stmt->bindParam(":user_id", $user_id);
-                $stmt->execute();
-                return ["message" => "Unliked successfully!", "action" => "unlike"];
+                $stmt->execute([$todoId, $userId]);
+                $action = 'unlike';
             } else {
                 // Like
-                $query = "INSERT INTO likes (todo_id, user_id) VALUES (:todo_id, :user_id)";
+                $query = "INSERT INTO todo_likes (todo_id, user_id) VALUES (?, ?)";
                 $stmt = $this->conn->prepare($query);
-                $stmt->bindParam(":todo_id", $todo_id);
-                $stmt->bindParam(":user_id", $user_id);
-                $stmt->execute();
-                return ["message" => "Liked successfully!", "action" => "like"];
+                $stmt->execute([$todoId, $userId]);
+                $action = 'like';
             }
+            
+            $this->conn->commit();
+            return ['action' => $action];
         } catch (PDOException $e) {
-            error_log("Like error: " . $e->getMessage());
-            return ["error" => "Like operation failed: " . $e->getMessage()];
+            $this->conn->rollBack();
+            throw new Exception("Error toggling like: " . $e->getMessage());
         }
     }
 
-    // Check if user has liked a todo
-    public function hasLiked($todo_id, $user_id) {
-        $query = "SELECT id FROM likes WHERE todo_id = :todo_id AND user_id = :user_id";
-        $stmt = $this->conn->prepare($query);
-        $stmt->bindParam(":todo_id", $todo_id);
-        $stmt->bindParam(":user_id", $user_id);
-        $stmt->execute();
-        return $stmt->rowCount() > 0;
+    public function hasLiked($todoId, $userId) {
+        try {
+            $query = "SELECT COUNT(*) FROM todo_likes WHERE todo_id = ? AND user_id = ?";
+            $stmt = $this->conn->prepare($query);
+            $stmt->execute([$todoId, $userId]);
+            return $stmt->fetchColumn() > 0;
+        } catch (PDOException $e) {
+            throw new Exception("Error checking like status: " . $e->getMessage());
+        }
     }
 }
 ?>

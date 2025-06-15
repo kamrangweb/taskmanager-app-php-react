@@ -1,49 +1,41 @@
 <?php
+require_once __DIR__ . '/../domain/TodoRepository.php';
+
 class TodoService {
-    private $TodoRepository;
+    private $todoRepository;
 
     public function __construct($todoRepository) {
-        $this->TodoRepository = $todoRepository;
+        $this->todoRepository = $todoRepository;
     }
 
     // Get Todos by User ID
-    public function getTodos($user_id) {
-        if ($user_id) {
-            // return ["message" => "Task added successfully!"];
-            return $this -> TodoRepository -> getTodos($user_id);
-
-        }
-        return ["error" => "Task creation failed!"];    
+    public function getTodos($userId) {
+        return $this->todoRepository->getTodos($userId);
     }
 
     // Create a New Todo
-    public function createTodo($user_id, $task) {
-        $result = $this -> TodoRepository -> createTodo($user_id, $task);
-
-        if ($result) {
-            return ["message" => "Task added successfully!"];
-        }
-        return ["error" => "Task creation failed!"];        
+    public function createTodo($userId, $task) {
+        return $this->todoRepository->createTodo($userId, $task);
     }
 
     // Update Todo
-    public function updateTodo($id, $task, $completed) {
-       return $this -> TodoRepository -> updateTodo($id, $task, $completed);
+    public function updateTodo($todoId, $userId, $data) {
+        return $this->todoRepository->updateTodo($todoId, $userId, $data);
     }
 
     // Delete Todo
-    public function deleteTodo($id) {
-       return $this -> TodoRepository -> deleteTodo($id);
+    public function deleteTodo($todoId, $userId) {
+        return $this->todoRepository->deleteTodo($todoId, $userId);
     }
 
     // Toggle Like
-    public function toggleLike($todo_id, $user_id) {
-        return $this->TodoRepository->toggleLike($todo_id, $user_id);
+    public function toggleLike($todoId, $userId) {
+        return $this->todoRepository->toggleLike($todoId, $userId);
     }
 
     // Check if user has liked a todo
     public function hasLiked($todo_id, $user_id) {
-        return $this->TodoRepository->hasLiked($todo_id, $user_id);
+        return $this->todoRepository->hasLiked($todo_id, $user_id);
     }
 }
 ?>

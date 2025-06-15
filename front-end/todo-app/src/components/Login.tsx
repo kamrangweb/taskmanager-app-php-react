@@ -1,12 +1,17 @@
 import React, { useState } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
+import { useDispatch } from 'react-redux';
+import { loginSuccess, loginFailure } from '../store/slices/authSlice';
+import { useAuth } from '../contexts/AuthContext';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
     const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const { setToken } = useAuth();
 
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -19,7 +24,6 @@ const Login = () => {
 
         const API_URL = 'http://localhost/php-projects/php-todo-react/back-end/public/login';
         
-
         console.log('Sending login request:', {
             url: API_URL,
             method: 'POST',
@@ -42,11 +46,20 @@ const Login = () => {
             console.log('Response data:', response.data);
 
             if (response.data.status === 'success') {
-                localStorage.setItem('token', response.data.token);
-                localStorage.setItem('username', response.data.username);
+                // Set token in AuthContext
+                setToken(response.data.token);
+                
+                // Update Redux state
+                dispatch(loginSuccess({
+                    token: response.data.token,
+                    username: response.data.username
+                }));
+                
                 navigate('/todos');
             } else {
-                setError(response.data.message || 'Login failed. Please check your credentials.');
+                const errorMessage = response.data.message || 'Login failed. Please check your credentials.';
+                dispatch(loginFailure(errorMessage));
+                setError(errorMessage);
             }
         } catch (error) {
             console.error('Login error:', error);
@@ -56,9 +69,13 @@ const Login = () => {
                     data: error.response?.data,
                     headers: error.response?.headers
                 });
-                setError(error.response?.data?.message || 'Login failed. Please try again.');
+                const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
+                dispatch(loginFailure(errorMessage));
+                setError(errorMessage);
             } else {
-                setError('An unexpected error occurred.');
+                const errorMessage = 'An unexpected error occurred.';
+                dispatch(loginFailure(errorMessage));
+                setError(errorMessage);
             }
         }
     };

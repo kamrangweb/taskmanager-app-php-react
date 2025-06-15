@@ -1,133 +1,258 @@
 // src/TodoApp.js
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { fetchTodos, addTask, toggleComplete, deleteTask, editTodo, toggleLike } from '../todo-redux/TodoSlice';
-import { AppDispatch, RootState } from '../store/index';
-import './TodoApp.css';
-
-interface Todo {
-  id: number;
-  task: string;
-  completed: boolean;
-  likes: number;
-  hasLiked?: boolean;
-}
+import { useDispatch, useSelector } from 'react-redux';
+import { RootState } from '../store';
+import { logout } from '../store/slices/authSlice';
+import { useNavigate } from 'react-router-dom';
+import { Todo } from '../types/todo';
+import { useAuth } from '../contexts/AuthContext';
+import '../assets/styles/todolist.scss';
 
 const TodoApp: React.FC = () => {
-  const [task, setTask] = useState('');
-  const [taskCount, setTaskCount] = useState(0);
-  const [editingId, setEditingId] = useState<number | null>(null);
-  const [editText, setEditText] = useState('');
-  const todos = useSelector((state: RootState) => state.todos.todos);
-  const dispatch = useDispatch<AppDispatch>();
-  
-  useEffect(() => {
-    dispatch(fetchTodos());
-  }, [taskCount]);
+    const [todos, setTodos] = useState<Todo[]>([]);
+    const [newTodo, setNewTodo] = useState('');
+    const [editingTodo, setEditingTodo] = useState<number | null>(null);
+    const [editText, setEditText] = useState('');
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const { token } = useAuth();
+    const navigate = useNavigate();
+    const dispatch = useDispatch();
+    const username = useSelector((state: RootState) => state.auth.username);
 
-  const handleAddTask = () => {
-    if (task.trim()) {
-      dispatch(addTask(task));
-      setTask('');
-      setTaskCount(taskCount+1);
-    }
-  };
+    useEffect(() => {
+        fetchTodos();
+    }, [token]);
 
-  const handleEdit = (id: number, task: string) => {
-    setEditingId(id);
-    setEditText(task);
-  };
+    const fetchTodos = async () => {
+        if (!token) return;
 
-  const handleSaveEdit = (id: number) => {
-    if (editText.trim()) {
-      dispatch(editTodo({ id, task: editText }));
-      setEditingId(null);
-      setEditText('');
-      dispatch(fetchTodos());
-    }
-  };
+        try {
+            setLoading(true);
+            setError(null);
+            console.log('Fetching todos with token:', token);
 
-  const handleDeleteTodo = (id: number) => {
-    dispatch(deleteTask(id));
-    dispatch(fetchTodos());
-  };
+            const response = await fetch('http://localhost/php-projects/php-todo-react/back-end/public/todos', {
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
 
-  const handleLike = (id: number) => {
-    console.log('Handling like for todo:', id); // Debug log
-    dispatch(toggleLike(id));
-  };
+            console.log('Response status:', response.status);
+            const rawResponse = await response.text();
+            console.log('Raw response:', rawResponse);
 
-  return (
-    <div className='container'>
-      <div className='max-width'>
-        <div className='todolist'>
-          <div className='todo-input-section'>
-            <div className='todo-input-wrapper'>
-              <h2 className='todo-header'>Your Todo List</h2>
-              <input 
-                className='search-bar' 
-                type='text' 
-                value={task} 
-                onChange={e => setTask(e.target.value)} 
-                placeholder='New task' 
-              />
-              <button id='add-button' className='checkout-button' onClick={handleAddTask}>Add Task</button>
-            </div>
-          </div>
+            let result;
+            try {
+                result = JSON.parse(rawResponse);
+                console.log('Parsed response:', result);
+                console.log('Response type:', typeof result);
+                console.log('Data type:', typeof result.data);
+                console.log('Is data array?', Array.isArray(result.data));
+                if (Array.isArray(result.data)) {
+                    console.log('First todo item:', result.data[0]);
+                }
+            } catch (e) {
+                console.error('Failed to parse response as JSON:', e);
+                throw new Error('Invalid JSON response from server');
+            }
 
-          <div className='todo-list-section'>
-            <ul id='todo-list'>
-              { todos.map((todo: Todo) => (
-                <li 
-                  className='todo-item' 
-                  key={todo.id} 
-                  style={{ listStyleType: todo.completed ? 'none' : 'number' }}
-                >
-                  {editingId === todo.id ? (
-                    <input
-                      type='text'
-                      className='edit-input'
-                      value={editText}
-                      onChange={e => setEditText(e.target.value)}
-                    />
-                  ) : (
-                    <span className='task-text' style={{ textDecoration: todo.completed ? 'line-through' : 'none' }}>
-                      <span className='circle blue'>
-                        <i className='material-icons'>{todo.completed ? '\ue876' : '\ue836'}</i>
-                      </span>
-                      {todo.task}
-                    </span>
-                  )}
-                  
-                  <button className='edit-button' onClick={() => editingId === todo.id ? handleSaveEdit(todo.id) : handleEdit(todo.id, todo.task)}>
-                    {editingId === todo.id ? 'Save' : 'Edit'}
-                  </button>
-                  <button
-                    className='complete-button'
-                    onClick={() => dispatch(toggleComplete({ id: todo.id, completed: todo.completed }))}>
-                    {todo.completed ? 'Completed' : 'Not done'}
-                  </button>
-                  <button className='delete-button' onClick={() => handleDeleteTodo(todo.id)}>Delete</button>
-                  <button 
-                    className={`like-button ${todo.hasLiked ? 'liked' : ''}`}
-                    onClick={() => handleLike(todo.id)}
-                    style={{ display: 'flex', alignItems: 'center', gap: '5px' }}
-                  >
-                    <i className='material-icons' style={{ color: todo.hasLiked ? '#e91e63' : '#666' }}>
-                      {todo.hasLiked ? 'favorite' : 'favorite_border'}
-                    </i>
-                    <span className='like-count' style={{ color: todo.hasLiked ? '#e91e63' : '#666' }}>
-                      {todo.likes || 0}
-                    </span>
-                  </button>
-                </li>
-              ))}
+            if (result.status === 'success') {
+                console.log('Success response, data:', result.data);
+                const todosArray = Array.isArray(result.data) ? result.data : [];
+                console.log('Setting todos array:', todosArray);
+                setTodos(todosArray);
+            } else {
+                console.log('Error response:', result);
+                setTodos([]);
+            }
+        } catch (err) {
+            console.error('Error fetching todos:', err);
+            setError(err instanceof Error ? err.message : 'An error occurred');
+            setTodos([]);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newTodo.trim() || !token) return;
+
+        try {
+            const response = await fetch('http://localhost/php-projects/php-todo-react/back-end/public/todos', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ task: newTodo })
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                setNewTodo('');
+                fetchTodos();
+            } else {
+                setError(data.message || 'Failed to add todo');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        }
+    };
+
+    const handleToggleComplete = async (id: number) => {
+        try {
+            const response = await fetch(`http://localhost/php-projects/php-todo-react/back-end/public/todos/${id}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ completed: !Boolean(todos.find(t => t.id === id)?.completed) })
+            });
+            const data = await response.json();
+            if (data.status === 'success') {
+                fetchTodos();
+            } else {
+                setError(data.message || 'Failed to update todo');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        }
+    };
+
+    const handleEdit = (id: number, task: string) => {
+        setEditingTodo(id);
+        setEditText(task);
+    };
+
+    const handleSaveEdit = async () => {
+        if (!editingTodo || !editText.trim() || !token) return;
+
+        try {
+            const response = await fetch(`http://localhost/php-projects/php-todo-react/back-end/public/todos/${editingTodo}`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${token}`
+                },
+                body: JSON.stringify({ task: editText })
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                setEditingTodo(null);
+                setEditText('');
+                fetchTodos();
+            } else {
+                setError(data.message || 'Failed to update todo');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        }
+    };
+
+    const handleDelete = async (id: number) => {
+        if (!token) return;
+
+        try {
+            const response = await fetch(`http://localhost/php-projects/php-todo-react/back-end/public/todos/${id}`, {
+                method: 'DELETE',
+                headers: {
+                    'Authorization': `Bearer ${token}`
+                }
+            });
+
+            const data = await response.json();
+            if (data.status === 'success') {
+                fetchTodos();
+            } else {
+                setError(data.message || 'Failed to delete todo');
+            }
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'An error occurred');
+        }
+    };
+
+    const handleLogout = () => {
+        dispatch(logout());
+        navigate('/login');
+    };
+
+    return (
+        <div className="todolist">
+            <h1 className="todo-header">Todo List</h1>
+            
+            <form onSubmit={handleSubmit}>
+                <input
+                    type="text"
+                    id="todo-input"
+                    value={newTodo}
+                    onChange={(e) => setNewTodo(e.target.value)}
+                    placeholder="Add a new todo"
+                />
+                <button type="submit" id="add-button">Add</button>
+            </form>
+
+            {loading && <p>Loading...</p>}
+            {error && <p className="error">{error}</p>}
+            
+            <ul id="todo-list">
+                {todos && todos.length > 0 ? (
+                    todos.map((todo) => (
+                        <li key={todo.id} className="todo-item">
+                            <div>
+                                <button
+                                    onClick={() => handleToggleComplete(todo.id)}
+                                    className="complete-button"
+                                >
+                                    {Boolean(todo.completed) ? '✓' : '○'}
+                                </button>
+                                <span className={`task-text ${Boolean(todo.completed) ? 'line-through' : ''}`}>
+                                    {todo.task}
+                                </span>
+                            </div>
+                            <div>
+                                <button
+                                    onClick={() => handleEdit(todo.id, todo.task)}
+                                    className="edit-button"
+                                >
+                                    Edit
+                                </button>
+                                <button
+                                    onClick={() => handleDelete(todo.id)}
+                                    className="delete-button"
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </li>
+                    ))
+                ) : (
+                    <li className="todo-item">No todos yet. Add one above!</li>
+                )}
             </ul>
-          </div>
+
+            {editingTodo && (
+                <div className="edit-modal">
+                    <div className="edit-modal-content">
+                        <h2>Edit Todo</h2>
+                        <input
+                            type="text"
+                            id="todo-input"
+                            value={editText}
+                            onChange={(e) => setEditText(e.target.value)}
+                        />
+                        <div>
+                            <button onClick={handleSaveEdit} className="edit-button">Save</button>
+                            <button onClick={() => setEditingTodo(null)} className="delete-button">Cancel</button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
-      </div>
-    </div>
-  );
+    );
 };
 
 export default TodoApp;
