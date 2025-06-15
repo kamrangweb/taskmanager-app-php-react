@@ -16,6 +16,9 @@ const Header: React.FC = () => {
     return (
         <nav className="navbar">
             <div className="container">
+                <div className="logo">
+                    <Link to="/" className="logo-text">TaskMAN</Link>
+                </div>
                 <button className="menu-icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                     <svg viewBox="0 0 24 24">
                         <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
@@ -28,7 +31,7 @@ const Header: React.FC = () => {
                                 <li>
                                     <Link to="/todos">Todos</Link>
                                 </li>
-                                <li className="login">
+                                <li className="logout">
                                     <button onClick={handleLogout}>Logout</button>
                                 </li>
                             </>
