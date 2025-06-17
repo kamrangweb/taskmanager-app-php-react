@@ -8,18 +8,21 @@ class TodoRepository {
 
     public function getTodos($userId) {
         try {
-            // Simple query to get all todos first
-            $query = "SELECT * FROM todos";
+            // Get todos for specific user
+            $query = "SELECT t.*, 
+                     (SELECT COUNT(*) FROM likes WHERE todo_id = t.id) as likes,
+                     (SELECT COUNT(*) FROM likes WHERE todo_id = t.id AND user_id = ?) as has_liked
+                     FROM todos t 
+                     WHERE t.user_id = ?";
             $stmt = $this->conn->prepare($query);
-            $stmt->execute();
+            $stmt->execute([$userId, $userId]);
             
             $todos = [];
             while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+                $row['hasLiked'] = (bool)$row['has_liked'];
+                unset($row['has_liked']);
                 $todos[] = $row;
             }
-            
-            // Debug: Print raw data
-            error_log("Raw todos data: " . json_encode($todos));
             
             return $todos;
         } catch (PDOException $e) {
@@ -95,20 +98,20 @@ class TodoRepository {
             $this->conn->beginTransaction();
             
             // Check if already liked
-            $query = "SELECT COUNT(*) FROM todo_likes WHERE todo_id = ? AND user_id = ?";
+            $query = "SELECT COUNT(*) FROM likes WHERE todo_id = ? AND user_id = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([$todoId, $userId]);
             $hasLiked = $stmt->fetchColumn() > 0;
             
             if ($hasLiked) {
                 // Unlike
-                $query = "DELETE FROM todo_likes WHERE todo_id = ? AND user_id = ?";
+                $query = "DELETE FROM likes WHERE todo_id = ? AND user_id = ?";
                 $stmt = $this->conn->prepare($query);
                 $stmt->execute([$todoId, $userId]);
                 $action = 'unlike';
             } else {
                 // Like
-                $query = "INSERT INTO todo_likes (todo_id, user_id) VALUES (?, ?)";
+                $query = "INSERT INTO likes (todo_id, user_id) VALUES (?, ?)";
                 $stmt = $this->conn->prepare($query);
                 $stmt->execute([$todoId, $userId]);
                 $action = 'like';
@@ -124,7 +127,7 @@ class TodoRepository {
 
     public function hasLiked($todoId, $userId) {
         try {
-            $query = "SELECT COUNT(*) FROM todo_likes WHERE todo_id = ? AND user_id = ?";
+            $query = "SELECT COUNT(*) FROM likes WHERE todo_id = ? AND user_id = ?";
             $stmt = $this->conn->prepare($query);
             $stmt->execute([$todoId, $userId]);
             return $stmt->fetchColumn() > 0;

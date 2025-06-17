@@ -1,140 +1,112 @@
 import React, { useState } from "react";
 import axios from "axios";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
+import "../assets/styles/login.scss";
 
 const Register = () => {
     const [username, setUsername] = useState("");
     const [password, setPassword] = useState("");
-    // const navigate = useNavigate();
+    const [error, setError] = useState("");
+    const [isLoading, setIsLoading] = useState(false);
+    const navigate = useNavigate();
 
     const handleRegister = async (e) => {
         e.preventDefault();
+        setError("");
+        setIsLoading(true);
+
         try {
             const response = await axios.post(
-                "http://localhost/php-projects/php-todo-react/back-end/public/index.php/register",
+                "http://localhost/php-projects/php-todo-react/back-end/public/register",
                 { 
                     username, 
                     password 
+                },
+                {
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
                 }
             );
-            alert(response.data);
-            // navigate("/login");
+
+            if (response.data.status === 'success') {
+                alert('Registration successful! Please login.');
+                navigate("/");
+            } else {
+                setError(response.data.message || 'Registration failed');
+            }
         } catch (error) {
             console.error("Registration failed", error);
+            if (axios.isAxiosError(error)) {
+                setError(error.response?.data?.message || 'Registration failed. Please try again.');
+            } else {
+                setError('An unexpected error occurred.');
+            }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div style={styles.container}>
-            <div style={styles.card}>
-                <h2 style={styles.header}>Create an Account</h2>
-                <form onSubmit={handleRegister} style={styles.form}>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Username</label>
+        <div className="login-page">
+            <div className="login-container">
+                <div className="login-header">
+                    <h1>Create Account</h1>
+                    <p>Please fill in your details to sign up</p>
+                </div>
+
+                {error && (
+                    <div className="error-message">
+                        <span>⚠️</span> {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleRegister} className="login-form">
+                    <div className="form-group">
+                        <label htmlFor="username">Username</label>
                         <input
+                            id="username"
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            style={styles.input}
                             placeholder="Enter your username"
                             required
                         />
                     </div>
-                    <div style={styles.inputGroup}>
-                        <label style={styles.label}>Password</label>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
                         <input
+                            id="password"
                             type="password"
                             value={password}
                             onChange={(e) => setPassword(e.target.value)}
-                            style={styles.input}
                             placeholder="Enter your password"
                             required
                         />
                     </div>
-                    <button type="submit" style={styles.button}>Register</button>
+
+                    <button 
+                        type="submit" 
+                        className={`login-button ${isLoading ? 'loading' : ''}`}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Creating Account...' : 'Sign Up'}
+                    </button>
                 </form>
-                <p style={styles.footerText}>
-                    Already have an account? <Link to="/" style={styles.link} >
-                        Sign in
-                    </Link>
-                </p>
+
+                <div className="login-footer">
+                    <p>
+                        Already have an account?{' '}
+                        <Link to="/" className="register-link">
+                            Sign in
+                        </Link>
+                    </p>
+                </div>
             </div>
         </div>
     );
-};
-
-const styles = {
-    container: {
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        height: "100vh",
-        backgroundColor: "#f4f4f4",
-    },
-    card: {
-        backgroundColor: "#fff",
-        padding: "20px",
-        borderRadius: "10px",
-        boxShadow: "0 4px 10px rgba(0, 0, 0, 0.1)",
-        width: "350px",
-        textAlign: "center",
-    },
-    header: {
-        fontSize: "22px",
-        fontWeight: "bold",
-        marginBottom: "20px",
-        color: "#333",
-    },
-    form: {
-        display: "flex",
-        flexDirection: "column",
-    },
-    inputGroup: {
-        marginBottom: "15px",
-        textAlign: "left",
-    },
-    label: {
-        fontSize: "14px",
-        color: "#555",
-        marginBottom: "5px",
-        display: "block",
-    },
-    input: {
-        width: "100%",
-        padding: "10px",
-        borderRadius: "5px",
-        border: "1px solid #ccc",
-        fontSize: "14px",
-        outline: "none",
-        transition: "border-color 0.3s",
-    },
-    inputFocus: {
-        borderColor: "#007bff",
-    },
-    button: {
-        width: "100%",
-        padding: "10px",
-        backgroundColor: "#007bff",
-        color: "#fff",
-        border: "none",
-        borderRadius: "5px",
-        cursor: "pointer",
-        fontSize: "16px",
-        transition: "background-color 0.3s",
-    },
-    buttonHover: {
-        backgroundColor: "#0056b3",
-    },
-    footerText: {
-        marginTop: "15px",
-        fontSize: "14px",
-        color: "#555",
-    },
-    link: {
-        color: "#007bff",
-        textDecoration: "none",
-        cursor: "pointer",
-    },
 };
 
 export default Register;

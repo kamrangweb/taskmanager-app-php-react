@@ -44,11 +44,77 @@ function getUserIdFromToken() {
     }
 }
 
+// Handle registration endpoint
+if ($endpoint === 'register') {
+    if ($method === 'POST') {
+        $data = json_decode(file_get_contents("php://input"), true);
+        if (!isset($data['username']) || !isset($data['password'])) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Username and password required']);
+            exit;
+        }
+
+        try {
+            $result = $auth->register($data['username'], $data['password']);
+            if ($result) {
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Registration successful'
+                ]);
+            } else {
+                http_response_code(400);
+                echo json_encode(['status' => 'error', 'message' => 'Registration failed']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'Registration error: ' . $e->getMessage()]);
+        }
+        exit;
+    } else {
+        http_response_code(405);
+        echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+        exit;
+    }
+}
+
+// Handle login endpoint
+if ($endpoint === 'login') {
+    if ($method === 'POST') {
+        $data = json_decode(file_get_contents("php://input"), true);
+        if (!isset($data['username']) || !isset($data['password'])) {
+            http_response_code(400);
+            echo json_encode(['status' => 'error', 'message' => 'Username and password required']);
+            exit;
+        }
+
+        try {
+            $result = $auth->login($data['username'], $data['password']);
+            if (isset($result['token'])) {
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Login successful',
+                    'token' => $result['token'],
+                    'username' => $data['username']
+                ]);
+            } else {
+                http_response_code(401);
+                echo json_encode(['status' => 'error', 'message' => 'Invalid credentials']);
+            }
+        } catch (Exception $e) {
+            http_response_code(500);
+            echo json_encode(['status' => 'error', 'message' => 'Login error: ' . $e->getMessage()]);
+        }
+        exit;
+    } else {
+        http_response_code(405);
+        echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
+        exit;
+    }
+}
+
 // Check if endpoint is todos
 if (strpos($endpoint, 'todos') === 0) {
     $userId = getUserIdFromToken();
-    error_log("User ID from token: " . ($userId ? $userId : 'null')); // Debug log
-    
     if (!$userId) {
         http_response_code(401);
         echo json_encode(['status' => 'error', 'message' => 'Unauthorized']);
@@ -60,12 +126,9 @@ if (strpos($endpoint, 'todos') === 0) {
         switch ($method) {
             case 'GET':
                 try {
-                    error_log("Fetching todos for user: " . $userId); // Debug log
                     $todos = $todoService->getTodos($userId);
-                    error_log("Todos fetched: " . json_encode($todos)); // Debug log
                     echo json_encode(['status' => 'success', 'data' => $todos]);
                 } catch (Exception $e) {
-                    error_log("Error fetching todos: " . $e->getMessage()); // Debug log
                     http_response_code(500);
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
@@ -158,76 +221,10 @@ if (strpos($endpoint, 'todos') === 0) {
     exit;
 }
 
-// Handle other endpoints (login, register)
-switch ($endpoint) {
-    case 'login':
-        if ($method === 'POST') {
-            $data = json_decode(file_get_contents("php://input"), true);
-            if (!isset($data['username']) || !isset($data['password'])) {
-                http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'Username and password required']);
-                exit;
-            }
-
-            try {
-                $result = $auth->login($data['username'], $data['password']);
-                if (isset($result['token'])) {
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => 'Login successful',
-                        'token' => $result['token'],
-                        'username' => $data['username']
-                    ]);
-                } else {
-                    http_response_code(401);
-                    echo json_encode(['status' => 'error', 'message' => 'Invalid credentials']);
-                }
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'Login error']);
-            }
-        } else {
-            http_response_code(405);
-            echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-        }
-        break;
-
-    case 'register':
-        if ($method === 'POST') {
-            $data = json_decode(file_get_contents("php://input"), true);
-            if (!isset($data['username']) || !isset($data['password'])) {
-                http_response_code(400);
-                echo json_encode(['status' => 'error', 'message' => 'Username and password required']);
-                exit;
-            }
-
-            try {
-                $result = $auth->register($data['username'], $data['password']);
-                if ($result) {
-                    echo json_encode([
-                        'status' => 'success',
-                        'message' => 'Registration successful'
-                    ]);
-                } else {
-                    http_response_code(400);
-                    echo json_encode(['status' => 'error', 'message' => 'Registration failed']);
-                }
-            } catch (Exception $e) {
-                http_response_code(500);
-                echo json_encode(['status' => 'error', 'message' => 'Registration error']);
-            }
-        } else {
-            http_response_code(405);
-            echo json_encode(['status' => 'error', 'message' => 'Method not allowed']);
-        }
-        break;
-
-    default:
-        http_response_code(404);
-        echo json_encode([
-            "status" => "error",
-            "message" => "Invalid endpoint",
-            "endpoint" => $endpoint
-        ]);
-        break;
-}
+// If no endpoint matches
+http_response_code(404);
+echo json_encode([
+    "status" => "error",
+    "message" => "Invalid endpoint",
+    "endpoint" => $endpoint
+]);

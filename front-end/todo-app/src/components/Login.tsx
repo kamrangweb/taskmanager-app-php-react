@@ -1,14 +1,16 @@
 import React, { useState } from 'react';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useDispatch } from 'react-redux';
 import { loginSuccess, loginFailure } from '../store/slices/authSlice';
 import { useAuth } from '../contexts/AuthContext';
+import '../assets/styles/login.scss';
 
 const Login = () => {
     const [username, setUsername] = useState('');
     const [password, setPassword] = useState('');
     const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false);
     const navigate = useNavigate();
     const dispatch = useDispatch();
     const { setToken } = useAuth();
@@ -16,6 +18,7 @@ const Login = () => {
     const handleLogin = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        setIsLoading(true);
 
         const loginData = {
             username: username,
@@ -24,12 +27,6 @@ const Login = () => {
 
         const API_URL = 'http://localhost/php-projects/php-todo-react/back-end/public/login';
         
-        console.log('Sending login request:', {
-            url: API_URL,
-            method: 'POST',
-            data: loginData
-        });
-
         try {
             const response = await axios({
                 method: 'POST',
@@ -42,19 +39,12 @@ const Login = () => {
                 }
             });
 
-            console.log('Response status:', response.status);
-            console.log('Response data:', response.data);
-
             if (response.data.status === 'success') {
-                // Set token in AuthContext
                 setToken(response.data.token);
-                
-                // Update Redux state
                 dispatch(loginSuccess({
                     token: response.data.token,
                     username: response.data.username
                 }));
-                
                 navigate('/todos');
             } else {
                 const errorMessage = response.data.message || 'Login failed. Please check your credentials.';
@@ -64,11 +54,6 @@ const Login = () => {
         } catch (error) {
             console.error('Login error:', error);
             if (axios.isAxiosError(error)) {
-                console.error('Axios error details:', {
-                    status: error.response?.status,
-                    data: error.response?.data,
-                    headers: error.response?.headers
-                });
                 const errorMessage = error.response?.data?.message || 'Login failed. Please try again.';
                 dispatch(loginFailure(errorMessage));
                 setError(errorMessage);
@@ -77,34 +62,68 @@ const Login = () => {
                 dispatch(loginFailure(errorMessage));
                 setError(errorMessage);
             }
+        } finally {
+            setIsLoading(false);
         }
     };
 
     return (
-        <div className="login-container">
-            <h2>Login</h2>
-            {error && <div className="error-message">{error}</div>}
-            <form onSubmit={handleLogin} method="POST">
-                <div className="form-group">
-                    <label>Username:</label>
-                    <input
-                        type="text"
-                        value={username}
-                        onChange={(e) => setUsername(e.target.value)}
-                        required
-                    />
+        <div className="login-page">
+            <div className="login-container">
+                <div className="login-header">
+                    <h1>Welcome Back!</h1>
+                    <p>Please enter your details to sign in</p>
                 </div>
-                <div className="form-group">
-                    <label>Password:</label>
-                    <input
-                        type="password"
-                        value={password}
-                        onChange={(e) => setPassword(e.target.value)}
-                        required
-                    />
+
+                {error && (
+                    <div className="error-message">
+                        <span>⚠️</span> {error}
+                    </div>
+                )}
+
+                <form onSubmit={handleLogin} className="login-form">
+                    <div className="form-group">
+                        <label htmlFor="username">Username</label>
+                        <input
+                            id="username"
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Enter your username"
+                            required
+                        />
+                    </div>
+
+                    <div className="form-group">
+                        <label htmlFor="password">Password</label>
+                        <input
+                            id="password"
+                            type="password"
+                            value={password}
+                            onChange={(e) => setPassword(e.target.value)}
+                            placeholder="Enter your password"
+                            required
+                        />
+                    </div>
+
+                    <button 
+                        type="submit" 
+                        className={`login-button ${isLoading ? 'loading' : ''}`}
+                        disabled={isLoading}
+                    >
+                        {isLoading ? 'Signing in...' : 'Sign In'}
+                    </button>
+                </form>
+
+                <div className="login-footer">
+                    <p>
+                        Don't have an account?{' '}
+                        <Link to="/register" className="register-link">
+                            Sign up
+                        </Link>
+                    </p>
                 </div>
-                <button type="submit">Login</button>
-            </form>
+            </div>
         </div>
     );
 };

@@ -17,7 +17,7 @@ const Header: React.FC = () => {
         <nav className="navbar">
             <div className="container">
                 <div className="logo">
-                    <Link to="/" className="logo-text">TaskMAN</Link>
+                    <Link to="/" className="logo-text">TaskManager</Link>
                 </div>
                 <button className="menu-icon" onClick={() => setIsMenuOpen(!isMenuOpen)}>
                     <svg viewBox="0 0 24 24">

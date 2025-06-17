@@ -15,6 +15,7 @@ const TodoApp: React.FC = () => {
     const [editText, setEditText] = useState('');
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    const [showCompletionModal, setShowCompletionModal] = useState(false);
     const { token } = useAuth();
     const navigate = useNavigate();
     const dispatch = useDispatch();
@@ -23,6 +24,13 @@ const TodoApp: React.FC = () => {
     useEffect(() => {
         fetchTodos();
     }, [token]);
+
+    useEffect(() => {
+        // Check if all tasks are completed
+        if (todos.length > 0 && todos.every(todo => Boolean(todo.completed))) {
+            setShowCompletionModal(true);
+        }
+    }, [todos]);
 
     const fetchTodos = async () => {
         if (!token) return;
@@ -248,6 +256,21 @@ const TodoApp: React.FC = () => {
                             <button onClick={handleSaveEdit} className="edit-button">Save</button>
                             <button onClick={() => setEditingTodo(null)} className="delete-button">Cancel</button>
                         </div>
+                    </div>
+                </div>
+            )}
+
+            {showCompletionModal && (
+                <div className="completion-modal">
+                    <div className="completion-modal-content">
+                        <h2>🎉 Congratulations! 🎉</h2>
+                        <p>All tasks completed!</p>
+                        <button 
+                            onClick={() => setShowCompletionModal(false)}
+                            className="completion-button"
+                        >
+                            Awesome!
+                        </button>
                     </div>
                 </div>
             )}
