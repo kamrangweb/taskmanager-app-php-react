@@ -208,35 +208,59 @@ const TodoApp: React.FC = () => {
             
             <ul id="todo-list">
                 {todos && todos.length > 0 ? (
-                    todos.map((todo) => (
-                        <li key={todo.id} className="todo-item">
-                            <div>
-                                <button
-                                    onClick={() => handleToggleComplete(todo.id)}
-                                    className="complete-button"
-                                >
-                                    {Boolean(todo.completed) ? '✓' : '○'}
-                                </button>
-                                <span className={`task-text ${Boolean(todo.completed) ? 'line-through' : ''}`}>
-                                    {todo.task}
-                                </span>
-                            </div>
-                            <div>
-                                <button
-                                    onClick={() => handleEdit(todo.id, todo.task)}
-                                    className="edit-button"
-                                >
-                                    Edit
-                                </button>
-                                <button
-                                    onClick={() => handleDelete(todo.id)}
-                                    className="delete-button"
-                                >
-                                    Delete
-                                </button>
-                            </div>
-                        </li>
-                    ))
+                    todos.map((todo) => {
+                        // Calculate if the todo is new (created within last 3 days)
+                        const isNew = (() => {
+                            const createdAt = new Date(todo.created_at);
+                            const now = new Date();
+                            const diffTime = now.getTime() - createdAt.getTime();
+                            const diffDays = diffTime / (1000 * 60 * 60 * 24);
+                            return diffDays <= 3;
+                        })();
+                        return (
+                            <li key={todo.id} className="todo-item">
+                                <div>
+                                    <button
+                                        onClick={() => handleToggleComplete(todo.id)}
+                                        className="complete-button"
+                                    >
+                                        {Boolean(todo.completed) ? '✓' : '○'}
+                                    </button>
+                                    <span className={`task-text ${Boolean(todo.completed) ? 'line-through' : ''}`}>
+                                        {todo.task}
+                                        {isNew && (
+                                            <span className="new-badge" style={{
+                                                marginLeft: '8px',
+                                                background: '#ff9800',
+                                                color: '#fff',
+                                                borderRadius: '8px',
+                                                padding: '2px 8px',
+                                                fontSize: '0.75em',
+                                                fontWeight: 'bold',
+                                                verticalAlign: 'middle',
+                                            }}>
+                                                NEW
+                                            </span>
+                                        )}
+                                    </span>
+                                </div>
+                                <div>
+                                    <button
+                                        onClick={() => handleEdit(todo.id, todo.task)}
+                                        className="edit-button"
+                                    >
+                                        Edit
+                                    </button>
+                                    <button
+                                        onClick={() => handleDelete(todo.id)}
+                                        className="delete-button"
+                                    >
+                                        Delete
+                                    </button>
+                                </div>
+                            </li>
+                        );
+                    })
                 ) : (
                     <li className="todo-item">No todos yet. Add one above!</li>
                 )}
