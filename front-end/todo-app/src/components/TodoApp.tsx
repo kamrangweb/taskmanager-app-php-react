@@ -190,7 +190,7 @@ const TodoApp: React.FC = () => {
 
     return (
         <div className="todolist">
-            <h1 className="todo-header">Todo List</h1>
+            <h1 className="todo-header">Tasks List</h1>
             
             <form onSubmit={handleSubmit}>
                 <input
