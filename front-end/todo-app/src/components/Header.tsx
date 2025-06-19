@@ -29,7 +29,10 @@ const Header: React.FC = () => {
                         {token ? (
                             <>
                                 <li>
-                                    <Link to="/todos">Todos</Link>
+                                    <Link to="/todos">All Todos</Link>
+                                </li>
+                                <li>
+                                    <Link to="/categories">Categories</Link>
                                 </li>
                                 <li className="logout">
                                     <button onClick={handleLogout}>Logout</button>

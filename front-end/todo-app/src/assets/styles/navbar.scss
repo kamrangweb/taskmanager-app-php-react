@@ -62,7 +62,7 @@
     ul {
         display: flex;
         align-items: center;
-        gap: 30px;
+        gap: 0px;
         list-style-type: none;
         margin: 0;
         padding: 0;
@@ -112,12 +112,20 @@
 
 .nav-elements ul {
     display: flex;
-    justify-content: space-between;
+    align-items: center;
+    gap: 0px;
     list-style-type: none;
+    margin: 0;
+    padding: 0;
 }
 
-.nav-elements ul li:not(:last-child) {
-    margin-right: 60px;
+.nav-elements ul li {
+    margin-right: 16px;
+}
+
+.nav-elements ul li.logout {
+    margin-left: 40px;
+    margin-right: 0;
 }
 
 .nav-elements ul a {
